@@ -474,8 +474,16 @@ def get_all_pods_in_kubernetes_cluster(
         context = get_current_kube_config_context_name()
 
     try:
-        pods = kubernetes.core_api(context).list_pod_for_all_namespaces(
-            _request_timeout=kubernetes.API_TIMEOUT).items
+        if "SKYPILOT_K8S_NAMESPACES" in os.environ:
+            namespaces = os.environ["SKYPILOT_K8S_NAMESPACES"].split(",")
+            pods = []
+            for ns in namespaces:
+                pods.extend(
+                    kubernetes.core_api(context).list_namespaced_pod(ns, _request_timeout=kubernetes.API_TIMEOUT).items
+                )
+        else:
+            pods = kubernetes.core_api(context).list_pod_for_all_namespaces(
+                _request_timeout=kubernetes.API_TIMEOUT).items
     except kubernetes.max_retry_error():
         raise exceptions.ResourcesUnavailableError(
             'Timed out when trying to get pod info from Kubernetes cluster. '
